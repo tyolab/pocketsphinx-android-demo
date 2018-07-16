@@ -38,6 +38,7 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.text.TextUtils;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -65,7 +66,7 @@ public class PocketSphinxActivity extends Activity implements
     private static final String MENU_SEARCH = "menu";
 
     /* Keyword we are looking for to activate menu */
-    private static final String KEYPHRASE = "oh mighty computer";
+    private static final String KEYPHRASE = "OK";
 
     /* Used to handle permission request */
     private static final int PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
@@ -73,9 +74,16 @@ public class PocketSphinxActivity extends Activity implements
     private SpeechRecognizer recognizer;
     private HashMap<String, Integer> captions;
 
+    private String keyPhrase;
+
     @Override
     public void onCreate(Bundle state) {
         super.onCreate(state);
+
+        keyPhrase = getString(R.string.kws_keyphrase);
+
+        if (TextUtils.isEmpty(keyPhrase))
+            keyPhrase = KEYPHRASE;
 
         // Prepare the data for UI
         captions = new HashMap<>();
@@ -163,7 +171,7 @@ public class PocketSphinxActivity extends Activity implements
             return;
 
         String text = hypothesis.getHypstr();
-        if (text.equals(KEYPHRASE))
+        if (text.equals(keyPhrase))
             switchSearch(MENU_SEARCH);
         else if (text.equals(DIGITS_SEARCH))
             switchSearch(DIGITS_SEARCH);
@@ -203,13 +211,18 @@ public class PocketSphinxActivity extends Activity implements
     private void switchSearch(String searchName) {
         recognizer.stop();
 
+        String caption;
+        String resourceStr = getResources().getString(captions.get(searchName));
         // If we are not spotting, start listening with timeout (10000 ms or 10 seconds).
-        if (searchName.equals(KWS_SEARCH))
+        if (searchName.equals(KWS_SEARCH)) {
             recognizer.startListening(searchName);
-        else
+            caption = String.format(resourceStr, keyPhrase);
+        }
+        else {
             recognizer.startListening(searchName, 10000);
+            caption = resourceStr;
+        }
 
-        String caption = getResources().getString(captions.get(searchName));
         ((TextView) findViewById(R.id.caption_text)).setText(caption);
     }
 
@@ -231,7 +244,7 @@ public class PocketSphinxActivity extends Activity implements
          */
 
         // Create keyword-activation search.
-        recognizer.addKeyphraseSearch(KWS_SEARCH, KEYPHRASE);
+        recognizer.addKeyphraseSearch(KWS_SEARCH, keyPhrase);
 
         // Create grammar-based search for selection between demos
         File menuGrammar = new File(assetsDir, "menu.gram");
